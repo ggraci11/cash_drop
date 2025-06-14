@@ -7,7 +7,7 @@ class CashCountRegister(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title("Cash Count Register")
-        self.geometry("500x600")
+        self.geometry("800x800")
 
         self.min_register = 100.00
 
