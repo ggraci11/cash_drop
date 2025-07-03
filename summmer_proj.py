@@ -1,4 +1,19 @@
+import sqlite3
 import customtkinter as ctk
+
+connection = sqlite3.connect('store_resisterinfo.db')
+cursor = connection.cursor()
+
+#create table for credentials
+command1 = """CREATE TABLE IF NOT EXISTS
+credentials(username TEXT PRIMARY KEY, password TEXT)"""
+cursor.execute(command1)
+
+#create table for day to day records (total money, deposit, money left for register)
+command2 = """CREATE TABLE IF NOT EXISTS
+records(id INTEGER, date STRING PRIMARY KEY, totalMoney FLOAT, deposit FLOAT, keepInReg FLOAT)"""
+cursor.execute(command2)
+connection.commit()
 
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("green")
@@ -7,9 +22,9 @@ class CashCountRegister(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title("Cash Count Register")
-        self.geometry("800x800")
+        self.geometry("800x600")
 
-        self.min_register = 100.00
+        self.min_register = 100.00 # would need alteration to make value adjustable
 
         self.denominations = {
             "$100": 100.0,
@@ -27,18 +42,27 @@ class CashCountRegister(ctk.CTk):
         self.entries = {}
 
         # Heading
-        ctk.CTkLabel(self, text="Cash Count Register", font=ctk.CTkFont(size=22, weight="bold")).pack(pady=10)
+        ctk.CTkLabel(self, text="Cash Count Register", font=ctk.CTkFont(size=22, weight="bold")).pack(pady=20)
 
         # Create entries for each denomination
         for label, value in self.denominations.items():
             frame = ctk.CTkFrame(self)
-            frame.pack(pady=5, padx=10, fill="x")
+            frame.pack(pady=3, padx=10, fill="x")
 
-            ctk.CTkLabel(frame, text=label, width=80).pack(side="left", padx=10)
+            ctk.CTkLabel(frame, text=label, width=50).pack(side="left", padx=10)
             entry = ctk.CTkEntry(frame, placeholder_text="0")
             entry.pack(side="right", padx=10, fill="x", expand=True)
             self.entries[label] = entry
 
+        # Date entry
+        date_frame = ctk.CTkFrame(self)
+        date_frame.pack(pady=5, padx=10, fill="x")
+        ctk.CTkLabel(date_frame, text="Date (MM-DD-YYYY):", width=50).pack(side="left", padx=10)
+        self.date_entry = ctk.CTkEntry(date_frame, placeholder_text="06-27-2025")
+        self.date_entry.pack(side="right", padx=10, fill="x", expand=True)
+
+        # Save button
+        ctk.CTkButton(self, text="Save", command=self.save_data).pack(pady=10)
         # Calculate button
         ctk.CTkButton(self, text="Calculate Total", command=self.calculate).pack(pady=20)
 
@@ -71,6 +95,22 @@ class CashCountRegister(ctk.CTk):
         self.total_label.configure(text=f"Total: ${total:.2f}")
         self.drop_label.configure(text=f"Cash Drop: ${drop_amount:.2f}")
         self.keep_label.configure(text=f"Keep in Register: ${self.min_register:.2f}")
+        self._last_total = total
+        self._last_drop = drop_amount
+
+    def save_data(self):
+        date = self.date_entry.get().strip()
+        if not date:
+            return
+           
+        self.calculate()
+        
+        cursor.execute(
+            "INSERT OR REPLACE INTO records (date, totalMoney, deposit, keepInReg) VALUES (?, ?, ?, ?)",
+            (date, self._last_total, self._last_drop, self.min_register)
+        )
+        connection.commit()
+        print(f"Data saved for {date}: Total: ${self._last_total}, Cash Drop: ${self._last_drop}, Keep in Register: ${self.min_register}")
 
     def clear_entries(self):
         for entry in self.entries.values():
@@ -82,3 +122,5 @@ class CashCountRegister(ctk.CTk):
 if __name__ == "__main__":
     app = CashCountRegister()
     app.mainloop()
+# Close the database connection when the application exits
+connection.close()
